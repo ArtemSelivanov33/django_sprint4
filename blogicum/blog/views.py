@@ -1,32 +1,26 @@
 from django.contrib.auth.decorators import login_required
-from django.core.paginator import Paginator
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_http_methods
+from django.views.generic import UpdateView
 
-from blog.forms import CommentForm, PostForm, UserEditForm
+from blog.forms import CommentForm, PostForm
 from blog.models import Category, Comment, Post, User
-from blogicum import constants
-
-
-def paginate_by(request, post_obj):
-    """Пагинация постов."""
-    paginator = Paginator(post_obj, constants.POSTS_BY_PAGE)
-    return paginator.get_page(request.GET.get("page"))
+from blog.utils import is_post_author, paginate_by
 
 
 def index(request):
     """Главная страница."""
     posts = (
-        Post.objects.all()
-        .filter(
-            category__is_published=True,
-            is_published=True,
-            pub_date__lte=timezone.now(),
+        Post.objects.get_all_active_posts()
+        .order_by(
+            "-pub_date",
         )
-        .order_by("-pub_date")
         .annotate(comment_count=Count("comments"))
-    ).select_related("category", "author", "location")
+    )
     return render(
         request,
         "blog/index.html",
@@ -45,10 +39,11 @@ def profile(request, username):
         username=username,
     )
     posts = (
-        Post.objects.filter(author=user)
+        Post.objects.published_posts(user)
         .order_by("-pub_date")
         .annotate(comment_count=Count("comments"))
     )
+
     return render(
         request,
         "blog/profile.html",
@@ -59,29 +54,18 @@ def profile(request, username):
     )
 
 
-@login_required
-def edit_profile(request):
-    """Страница редактирования профиля."""
-    user = get_object_or_404(
-        User,
-        username=request.user,
-    )
-    form = UserEditForm(
-        request.POST or None,
-        instance=user,
-    )
+class EditProfileView(LoginRequiredMixin, UpdateView):
+    """Редактирования профиля."""
 
-    if form.is_valid():
-        form.save()
+    model = User
+    fields = ("first_name", "last_name", "username", "email")
+    template_name = "blog/user.html"
 
-    return render(
-        request,
-        "blog/user.html",
-        context={
-            "form": form,
-            "profile": user,
-        },
-    )
+    def get_object(self, queryset=None):
+        return self.request.user
+
+    def get_success_url(self):
+        return reverse("blog:profile", args=(self.request.user.username,))
 
 
 @login_required
@@ -106,20 +90,17 @@ def create_post(request):
     )
 
 
+@is_post_author
 @login_required
 def edit_post(request, post_id):
     """Редактирование поста."""
     post = get_object_or_404(Post, id=post_id)
-
-    if request.user != post.author:
-        return redirect("blog:post_detail", post_id)
 
     form = PostForm(
         request.POST or None,
         files=request.FILES or None,
         instance=post,
     )
-
     if form.is_valid():
         form.save()
         return redirect("blog:post_detail", post_id)
@@ -133,20 +114,14 @@ def edit_post(request, post_id):
     )
 
 
+@require_http_methods(("POST",))
+@is_post_author
 @login_required
 def delete_post(request, post_id):
     """Удаление поста."""
     post = get_object_or_404(Post, id=post_id)
-    if request.user != post.author:
-        return redirect("blog:post_detail", post_id)
-    if request.method == "POST":
-        post.delete()
-        return redirect("blog:index")
-    return render(
-        request,
-        "blog/create.html",
-        context={"form": PostForm(instance=post)},
-    )
+    post.delete()
+    return redirect("blog:index")
 
 
 def post_detail(request, post_id):

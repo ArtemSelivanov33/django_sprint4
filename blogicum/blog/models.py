@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import models
 
+from blog import managers
 from blogicum import constants
 
 User = get_user_model()
@@ -22,6 +23,7 @@ class PublishedModel(models.Model):
 
 
 class Post(PublishedModel):
+    objects = managers.PostManager()
     title = models.CharField(
         max_length=constants.MAX_FIELD_LENGTH,
         verbose_name="Заголовок",
@@ -69,10 +71,11 @@ class Post(PublishedModel):
         ordering = ("-pub_date",)
 
     def __str__(self):
-        return self.title
+        return self.title[: constants.MAX_TITLE_LENGTH]
 
 
 class Category(PublishedModel):
+    objects = managers.CategoryManager()
     title = models.CharField(
         max_length=constants.MAX_FIELD_LENGTH,
         verbose_name="Заголовок",

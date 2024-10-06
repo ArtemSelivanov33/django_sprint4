@@ -18,11 +18,11 @@ urlpatterns = [
     ),
     path(
         "profile/edit/",
-        views.edit_profile,
+        views.EditProfileView.as_view(),
         name="edit_profile",
     ),
     path(
-        "profile/<slug:username>/",
+        "profile/<str:username>/",
         views.profile,
         name="profile",
     ),

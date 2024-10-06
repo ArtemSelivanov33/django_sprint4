@@ -1,19 +1,6 @@
 from django.forms import DateTimeInput, ModelForm, Textarea
 
-from blog.models import Comment, Post, User
-
-
-class UserEditForm(ModelForm):
-    """Форма пользователя."""
-
-    class Meta:
-        model = User
-        fields = (
-            "first_name",
-            "last_name",
-            "username",
-            "email",
-        )
+from blog.models import Comment, Post
 
 
 class PostForm(ModelForm):

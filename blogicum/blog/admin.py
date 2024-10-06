@@ -21,7 +21,11 @@ class PostAdmin(admin.ModelAdmin):
         "is_published",
         "created_at",
     )
-    list_editable = ("is_published", "location", "category",)
+    list_editable = (
+        "is_published",
+        "location",
+        "category",
+    )
     search_fields = ("text",)
     list_filter = (
         "id",
