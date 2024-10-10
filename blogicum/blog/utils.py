@@ -1,3 +1,4 @@
+from functools import wraps
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect
 
@@ -14,6 +15,7 @@ def paginate_by(request, posts):
 def is_post_author(func):
     """Проверяет, является ли пользователь автором поста."""
 
+    @wraps(func)
     def wrapper(request, post_id, *args, **kwargs):
         post = get_object_or_404(Post, id=post_id)
         if request.user != post.author:

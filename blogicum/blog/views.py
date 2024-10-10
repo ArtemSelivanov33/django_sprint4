@@ -15,7 +15,7 @@ from blog.utils import is_post_author, paginate_by
 def index(request):
     """Главная страница."""
     posts = (
-        Post.objects.get_all_active_posts()
+        Post.objects.published_posts()
         .order_by(
             "-pub_date",
         )
@@ -39,7 +39,7 @@ def profile(request, username):
         username=username,
     )
     posts = (
-        Post.objects.published_posts(user)
+        Post.objects.get_user_posts(user)
         .order_by("-pub_date")
         .annotate(comment_count=Count("comments"))
     )
@@ -90,8 +90,8 @@ def create_post(request):
     )
 
 
-@is_post_author
 @login_required
+@is_post_author
 def edit_post(request, post_id):
     """Редактирование поста."""
     post = get_object_or_404(Post, id=post_id)
@@ -135,21 +135,17 @@ def post_detail(request, post_id):
         id=post_id,
     )
     if post.author == request.user:
-        comments = Comment.objects.filter(post_id=post_id)
+        comments = post.comments.all()
     else:
         post = get_object_or_404(
-            Post.objects.select_related(
-                "category",
-                "location",
-                "author",
-            ).filter(
+            Post.objects.filter(
                 pub_date__lte=timezone.now(),
                 category__is_published=True,
                 is_published=True,
                 id=post_id,
             )
         )
-        comments = Comment.objects.filter(post_id=post_id)
+        comments = post.comments.all()
     return render(
         request,
         "blog/detail.html",
