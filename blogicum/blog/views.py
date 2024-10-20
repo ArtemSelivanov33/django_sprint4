@@ -14,19 +14,20 @@ from blog.utils import is_post_author, paginate_by
 
 def index(request):
     """Главная страница."""
-    posts = (
-        Post.objects.published_posts()
-        .order_by(
-            "-pub_date",
-        )
-        .annotate(comment_count=Count("comments"))
-    )
     return render(
         request,
         "blog/index.html",
         context={
-            "posts": posts,
-            "page_obj": paginate_by(request, posts),
+            "posts": Post.objects.published_posts()
+                .order_by(
+                    "-pub_date",
+                )
+                .annotate(comment_count=Count("comments")),
+            "page_obj": paginate_by(request, Post.objects.published_posts()
+                .order_by(
+                    "-pub_date",
+                )
+                .annotate(comment_count=Count("comments"))),
         },
     )
 
@@ -114,9 +115,9 @@ def edit_post(request, post_id):
     )
 
 
+@login_required
 @require_http_methods(("POST",))
 @is_post_author
-@login_required
 def delete_post(request, post_id):
     """Удаление поста."""
     post = get_object_or_404(Post, id=post_id)
